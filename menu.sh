@@ -33,7 +33,7 @@ tput cuu1 && tput dl1
 done
 if [[ ${yesno} = @(s|S|y|Y) ]]; then
 echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/zi.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi.sh)
 fi
 }
 #installv2
@@ -47,7 +47,7 @@ tput cuu1 && tput dl1
 done
 if [[ ${yesno} = @(s|S|y|Y) ]]; then
 echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/zi2.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi2.sh)
 fi
 }
 #installv3
@@ -61,7 +61,7 @@ tput cuu1 && tput dl1
 done
 if [[ ${yesno} = @(s|S|y|Y) ]]; then
 echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/zi3.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi3.sh)
 fi
 }
 #uninstall
@@ -75,7 +75,7 @@ tput cuu1 && tput dl1
 done
 if [[ ${yesno} = @(s|S|y|Y) ]]; then
 echo -e "${YELLOW}UNINSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/uninstall.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/uninstall.sh)
 fi
 }
 #start
