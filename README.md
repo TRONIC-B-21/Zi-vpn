@@ -19,7 +19,7 @@ wget -O zi.sh https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi.sh
 
 #### Installation ARM
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi2.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi3.sh)
 ```
 
 
