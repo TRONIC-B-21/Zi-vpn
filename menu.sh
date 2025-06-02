@@ -61,7 +61,7 @@ tput cuu1 && tput dl1
 done
 if [[ ${yesno} = @(s|S|y|Y) ]]; then
 echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/ziv2.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/zi3.sh)
 fi
 }
 #uninstall
