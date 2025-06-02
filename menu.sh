@@ -3,7 +3,7 @@
 IP=`curl -4 icanhazip.com`;
 distribution=`( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1`;
 Network=`ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1`;
-ports=`netstat -tunlp | grep zivpn | grep ::: | awk '{print substr($4,4); }' > /tmp/udpzivpn.txt && echo | cat /tmp/udpzivpn.txt | tr '\n' ' ' > /tmp/udpzivpnports.txt && cat /tmp/udpzivpnports.txt`;
+ports=`netstat -tunlp | grep udp-zivpn | grep ::: | awk '{print substr($4,4); }' > /tmp/udp-zivpn.txt && echo | cat /tmp/udp-zivpn.txt | tr '\n' ' ' > /tmp/udp-zivpnports.txt && cat /tmp/udp-zivpnports.txt`;
 #colors
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -79,7 +79,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/u
 fi
 }
 #start
-function startzivpn(){
+function startudp-zivpn(){
 echo -e "${RED} ────────────── /// ─────────────── "
 echo -e "${YELLOW}This option will start the ZiVPN server"
 echo -e "${YELLOW}Continue?"
@@ -92,13 +92,13 @@ echo -e "${YELLOW}STARTING.."
     if [[ ${yesno} = @(s|S|y|Y) ]]; then
         echo -e "${YELLOW}Checking for ZiVPN services..."
         
-        if [[ -f /etc/systemd/system/zivpn.service ]]; then
+        if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN service..."
-            sudo systemctl start zivpn.service
+            sudo systemctl start udp-zivpn.service
         fi
-        if [[ -f /etc/systemd/system/zivpn_backfill.service ]]; then
+        if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN Backfill service..."
-            sudo systemctl start zivpn_backfill.service
+            sudo systemctl start udp-zivpn_backfill.service
         fi
         
         echo -e "${YELLOW}DONE!"
@@ -106,7 +106,7 @@ echo -e "${YELLOW}STARTING.."
 fi
 }
 #stop
-function stopzivpn(){
+function stopudp-zivpn(){
 echo -e "${RED} ────────────── /// ─────────────── "
 echo -e "${YELLOW}This option will stop the ZiVPN server"
 echo -e "${YELLOW}Continue?"
@@ -119,13 +119,13 @@ echo -e "${YELLOW}STOPPING.."
     if [[ ${yesno} = @(s|S|y|Y) ]]; then
         echo -e "${YELLOW}Checking for ZiVPN services..."
         
-        if [[ -f /etc/systemd/system/zivpn.service ]]; then
+        if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN service..."
             sudo systemctl stop zivpn.service
         fi
-        if [[ -f /etc/systemd/system/zivpn_backfill.service ]]; then
+        if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN Backfill service..."
-            sudo systemctl stop zivpn_backfill.service
+            sudo systemctl stop udp-zivpn_backfill.service
         fi
         
         echo -e "${YELLOW}DONE!"
@@ -133,7 +133,7 @@ echo -e "${YELLOW}STOPPING.."
 fi
 }
 #restart
-function restartzivpn(){
+function restartudp-zivpn(){
 echo -e "${RED} ────────────── /// ─────────────── "
 echo -e "${YELLOW}This option will restart the ZiVPN server"
 echo -e "${YELLOW}Continue?"
@@ -146,13 +146,13 @@ echo -e "${YELLOW}RESTARTING.."
     if [[ ${yesno} = @(s|S|y|Y) ]]; then
         echo -e "${YELLOW}Checking for ZiVPN services..."
         
-        if [[ -f /etc/systemd/system/zivpn.service ]]; then
+        if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN service..."
-            sudo systemctl restart zivpn.service
+            sudo systemctl restart udp-zivpn.service
         fi
-        if [[ -f /etc/systemd/system/zivpn_backfill.service ]]; then
+        if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN Backfill service..."
-            sudo systemctl restart zivpn_backfill.service
+            sudo systemctl restart udp-zivpn_backfill.service
         fi
         
         echo -e "${YELLOW}DONE!"
