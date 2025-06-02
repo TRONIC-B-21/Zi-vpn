@@ -2,21 +2,21 @@
 # - ZiVPN Remover -
 clear
 echo -e "Uninstalling ZiVPN ..."
-systemctl stop zivpn.service 1> /dev/null 2> /dev/null
-systemctl stop zivpn_backfill.service 1> /dev/null 2> /dev/null
-systemctl disable zivpn.service 1> /dev/null 2> /dev/null
-systemctl disable zivpn_backfill.service 1> /dev/null 2> /dev/null
-rm /etc/systemd/system/zivpn.service 1> /dev/null 2> /dev/null
-rm /etc/systemd/system/zivpn_backfill.service 1> /dev/null 2> /dev/null
-killall zivpn 1> /dev/null 2> /dev/null
-rm -rf /etc/zivpn 1> /dev/null 2> /dev/null
-rm /usr/local/bin/zivpn 1> /dev/null 2> /dev/null
-if pgrep "zivpn" >/dev/null; then
+systemctl stop udp-zivpn.service 1> /dev/null 2> /dev/null
+systemctl stop udp-zivpn_backfill.service 1> /dev/null 2> /dev/null
+systemctl disable udp-zivpn.service 1> /dev/null 2> /dev/null
+systemctl disable udp-zivpn_backfill.service 1> /dev/null 2> /dev/null
+rm /etc/systemd/system/udp-zivpn.service 1> /dev/null 2> /dev/null
+rm /etc/systemd/system/udp-zivpn_backfill.service 1> /dev/null 2> /dev/null
+killall udp-zivpn 1> /dev/null 2> /dev/null
+rm -rf /etc/udp-zivpn 1> /dev/null 2> /dev/null
+rm /usr/local/bin/udp-zivpn 1> /dev/null 2> /dev/null
+if pgrep "udp-zivpn" >/dev/null; then
   echo -e "Server Running"
 else
   echo -e "Server Stopped"
 fi
-file="/usr/local/bin/zivpn" 1> /dev/null 2> /dev/null
+file="/usr/local/bin/udp-zivpn" 1> /dev/null 2> /dev/null
 if [ -e "$file" ] 1> /dev/null 2> /dev/null; then
   echo -e "Files still remaining, try again"
 else
