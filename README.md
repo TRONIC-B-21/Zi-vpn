@@ -10,7 +10,7 @@ UDP server installation for ZIVPN Tunnel (SSH/DNS/UDP) VPN app.
 >Server binary for Linux amd64 and arm.
 ### menu installtion 
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/zivpn/main/menu)
+bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/menu)
 ```
 #### Installation AMD
 ```
