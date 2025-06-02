@@ -1,5 +1,5 @@
 #!/bin/bash
-#Zahid - PowerMX
+#Hyper - Tronic
 IP=`curl -4 icanhazip.com`;
 distribution=`( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1`;
 Network=`ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1`;
