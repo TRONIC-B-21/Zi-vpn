@@ -12,10 +12,10 @@ mkdir /etc/zivpn 1> /dev/null 2> /dev/null
 wget https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json -O /etc/zivpn/config.json 1> /dev/null 2> /dev/null
 
 echo "Generating cert files:"
-openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=zivpn" -keyout "/etc/zivpn/zivpn.key" -out "/etc/zivpn/zivpn.crt"
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" -keyout "/etc/zivpn/udp-zivpn.key" -out "/etc/zivpn/udp-zivpn.crt"
 sysctl -w net.core.rmem_max=16777216 1> /dev/null 2> /dev/null
 sysctl -w net.core.wmem_max=16777216 1> /dev/null 2> /dev/null
-cat <<EOF > /etc/systemd/system/zivpn.service
+cat <<EOF > /etc/systemd/system/udp-zivpn.service
 [Unit]
 Description=zivpn VPN Server
 After=network.target
@@ -24,7 +24,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/etc/zivpn
-ExecStart=/usr/local/bin/zivpn server -c /etc/zivpn/config.json
+ExecStart=/usr/local/bin/udp-zivpn server -c /etc/udp-zivpn/config.json
 Restart=always
 RestartSec=3
 Environment=ZIVPN_LOG_LEVEL=info
@@ -50,10 +50,10 @@ fi
 
 new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
 
-sed -i -E "s/\"config\": ?\[[[:space:]]*\"zi\"[[:space:]]*\]/${new_config_str}/g" /etc/zivpn/config.json
+sed -i -E "s/\"config\": ?\[[[:space:]]*\"zi\"[[:space:]]*\]/${new_config_str}/g" /etc/udp-zivpn/config.json
 
-systemctl enable zivpn.service
-systemctl start zivpn.service
+systemctl enable udp-zivpn.service
+systemctl start udp-zivpn.service
 iptables -t nat -A PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 ufw allow 6000:19999/udp
 ufw allow 5667/udp
