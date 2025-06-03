@@ -20,15 +20,11 @@ wget -O zi.sh https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi.sh
 ```
 wget -O zi.sh https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi.sh; sudo chmod +x zi.sh; sudo ./zi2.sh
 ```
-
 #### Installation ARM 
 ```
 bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi3.sh)
 ```
-
-
 ### Uninstall
-
 ```
 sudo wget -O ziun.sh https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/uninstall.sh; sudo chmod +x ziun.sh; sudo ./ziun.sh
 ```
