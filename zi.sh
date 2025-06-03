@@ -1,74 +1,93 @@
 #!/bin/bash
-# 🚀 ZIVPN + WireGuard Installer – AMD64 Optimized (1 GB VPS Edition)
-# Author: TRONIC-B-21
+# ZIVPN UDP & WireGuard Installer - VoltSSH Style
+# Maintainer: TRONIC-B-21
+# https://github.com/TRONIC-B-21/zivpn
 
-set -e
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
 clear
-echo -e "\e[92m🚀 Installing ZIVPN + WireGuard – Ultimate Performance Mode\e[0m"
+echo -e "${GREEN}"
+echo "╔════════════════════════════════════════╗"
+echo "║           ZIVPN Installer              ║"
+echo "║         Maintained by TRONIC-B-21      ║"
+echo "╚════════════════════════════════════════╝"
+echo -e "${NC}"
 
-# 1) Update & upgrade
+# Check if run as root
+if [[ $EUID -ne 0 ]]; then
+  echo -e "${RED}Error: This script must be run as root!${NC}"
+  exit 1
+fi
+
+# Basic system update
+echo -e "${YELLOW}[*] Updating system packages...${NC}"
 apt-get update -y && apt-get upgrade -y
 
-# 2) Enable IP forwarding
-cat <<EOF >> /etc/sysctl.conf
-net.ipv4.ip_forward=1
-net.ipv6.conf.all.forwarding=1
-EOF
+# Enable BBR and UDP tuning
+echo -e "${YELLOW}[*] Enabling BBR and tuning kernel parameters...${NC}"
+modprobe tcp_bbr
+echo "net.core.default_qdisc = fq" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_congestion_control = bbr" >> /etc/sysctl.conf
 sysctl -p
-
-# 3) Kernel tuning
 sysctl -w net.core.rmem_max=2500000
 sysctl -w net.core.wmem_max=2500000
-sysctl -w net.ipv4.udp_mem="65536 131072 262144"
-sysctl -w net.ipv4.udp_rmem_min=65536
-sysctl -w net.ipv4.udp_wmem_min=65536
-sysctl -w net.ipv4.tcp_rmem="4096 87380 2500000"
-sysctl -w net.ipv4.tcp_wmem="4096 65536 2500000"
-sysctl -w net.core.netdev_max_backlog=50000
-sysctl -w net.ipv4.tcp_congestion_control="bbr"
-sysctl -w net.ipv4.tcp_fastopen=3
-sysctl -w net.ipv4.tcp_max_syn_backlog=4096
-sysctl -w net.ipv4.tcp_tw_reuse=1
+sysctl -w net.ipv4.ip_forward=1
 
-# 4) Stop existing ZIVPN
+# Stop any existing services
+echo -e "${YELLOW}[*] Stopping existing ZIVPN or WireGuard services if any...${NC}"
+systemctl stop zivpn.service 2>/dev/null || true
 systemctl stop udp-zivpn.service 2>/dev/null || true
+systemctl stop wg-quick@wg0.service 2>/dev/null || true
 
-# 5) Download ZIVPN AMD64
-wget -q --show-progress \
-  https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 \
-  -O /usr/local/bin/udp-zivpn
+# Download ZIVPN UDP binary
+echo -e "${YELLOW}[*] Downloading ZIVPN UDP binary...${NC}"
+curl -L -o /usr/local/bin/udp-zivpn https://github.com/TRONIC-B-21/zivpn/releases/latest/download/udp-zivpn-linux-amd64
 chmod +x /usr/local/bin/udp-zivpn
 
-# 6) Setup ZIVPN config
-mkdir -p /etc/udp-zivpn
-cat <<EOF > /etc/udp-zivpn/config.json
+# Setup config directory and default config
+echo -e "${YELLOW}[*] Setting up config directory and default config...${NC}"
+mkdir -p /etc/zivpn
+cat > /etc/zivpn/config.json <<EOF
 {
   "listen": ":5667",
   "mtu": 1350,
   "cipher": "chacha20-poly1305",
   "handshake_timeout": 5,
   "idle_timeout": 300,
-  "log_level": "warn",
+  "log_level": "info",
   "config": ["zi"]
 }
 EOF
 
-# 7) SSL for ZIVPN
-openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
-  -subj "/C=US/ST=CA/L=LA/O=ZIVPN/OU=CORE/CN=udp-zivpn" \
-  -keyout /etc/udp-zivpn/udp-zivpn.key \
-  -out    /etc/udp-zivpn/udp-zivpn.crt
+# Ask user for passwords
+read -p "Enter UDP passwords (comma separated, default: zi): " passwords
+if [[ -z "$passwords" ]]; then
+  passwords="zi"
+fi
 
-# 8) Create ZIVPN systemd service
-cat <<EOF > /etc/systemd/system/udp-zivpn.service
+# Format passwords into JSON array
+IFS=',' read -ra arr <<< "$passwords"
+pw_json=$(printf "\"%s\"," "${arr[@]}")
+pw_json="[${pw_json%,}]"
+
+# Replace config passwords in config.json
+sed -i -E "s/\"config\": ?\[[^]]*\]/\"config\": $pw_json/" /etc/zivpn/config.json
+
+# Setup systemd service for ZIVPN UDP
+echo -e "${YELLOW}[*] Creating systemd service for ZIVPN UDP...${NC}"
+cat > /etc/systemd/system/udp-zivpn.service <<EOF
 [Unit]
-Description=ZIVPN UDP Server (AMD64)
+Description=ZIVPN UDP Server
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/udp-zivpn server -c /etc/udp-zivpn/config.json
+ExecStart=/usr/local/bin/udp-zivpn server -c /etc/zivpn/config.json
 Restart=always
-RestartSec=2
+RestartSec=3
 User=root
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 NoNewPrivileges=true
@@ -77,52 +96,49 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 
-# 9) Configure ZIVPN passwords
-read -p "🔐 Enter UDP passwords (comma-separated, default 'zi'): " input_config
-if [ -n "$input_config" ]; then
-  IFS=',' read -ra arr <<< "$input_config"
-  new_config_str="\"config\": [$(printf '\"%s\",' "${arr[@]}" | sed 's/,\$//')]"
-  sed -i -E "s/\"config\": ?\[[^]]*\]/$new_config_str/" /etc/udp-zivpn/config.json
+# Install WireGuard
+echo -e "${YELLOW}[*] Installing WireGuard...${NC}"
+apt-get install -y wireguard iptables
+
+# Generate WireGuard keys if not exist
+if [ ! -f /etc/wireguard/privatekey ]; then
+  umask 077
+  wg genkey | tee /etc/wireguard/privatekey | wg pubkey > /etc/wireguard/publickey
 fi
 
-# 10) Enable and start ZIVPN
+PRIVATE_KEY=$(cat /etc/wireguard/privatekey)
+PUBLIC_KEY=$(cat /etc/wireguard/publickey)
+
+# Configure WireGuard interface
+echo -e "${YELLOW}[*] Setting up WireGuard interface wg0...${NC}"
+cat > /etc/wireguard/wg0.conf <<EOF
+[Interface]
+PrivateKey = $PRIVATE_KEY
+Address = 10.10.10.1/24
+ListenPort = 51820
+SaveConfig = true
+EOF
+
+# Enable IP masquerading and forwarding for WireGuard
+IFACE=$(ip -4 route show default | grep default | awk '{print $5}')
+
+iptables -A FORWARD -i wg0 -j ACCEPT
+iptables -A FORWARD -o wg0 -j ACCEPT
+iptables -t nat -A POSTROUTING -s 10.10.10.0/24 -o $IFACE -j MASQUERADE
+
+# Enable and start WireGuard
+systemctl enable wg-quick@wg0
+systemctl restart wg-quick@wg0
+
+# Enable and start ZIVPN UDP
 systemctl daemon-reload
 systemctl enable udp-zivpn
 systemctl restart udp-zivpn
 
-# 11) NAT firewall rules
-iface=$(ip -4 route show default | awk '/default/ {print $5; exit}')
-iptables -t nat -C PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667 2>/dev/null || \
-iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+# Setup iptables for ZIVPN UDP ports
+iptables -t nat -A PREROUTING -i $IFACE -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 
-# ========== WIREGUARD CONFIGURATION ==========
-
-echo -e "\n⚙️ Installing WireGuard..."
-apt-get install -y wireguard qrencode
-
-mkdir -p /etc/wireguard
-cd /etc/wireguard
-
-# Generate private/public key pair
-wg genkey | tee privatekey | wg pubkey > publickey
-
-# Create basic wg0.conf
-cat <<EOF > /etc/wireguard/wg0.conf
-[Interface]
-PrivateKey = $(cat privatekey)
-Address = 10.66.66.1/24
-ListenPort = 51820
-SaveConfig = true
-
-PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $iface -j MASQUERADE
-PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $iface -j MASQUERADE
-EOF
-
-chmod 600 wg0.conf
-systemctl enable wg-quick@wg0
-systemctl start wg-quick@wg0
-
-# Show public key to user
-echo -e "\n✅ WireGuard is active. Server public key:\n$(cat publickey)"
-echo -e "\n➡️ Add clients manually using \e[1mwg set\e[0m or \e[1mnano /etc/wireguard/wg0.conf\e[0m."
-echo -e "\n✅ ZIVPN + WireGuard successfully installed with hyped BBR and performance tweaks!\n"
+echo -e "${GREEN}[✔] Installation complete!${NC}"
+echo -e "ZIVPN UDP listening on port 5667"
+echo -e "WireGuard listening on port 51820"
+echo -e "WireGuard public key:\n$PUBLIC_KEY"
