@@ -1,10 +1,10 @@
 #!/bin/bash
-# 🚀 ZIVPN UDP Module Installer – AMD64 (Optimized for 1 GB VPS)
+# 🚀 ZIVPN UDP Module Installer – ARM64 (Optimized for 1 GB VPS)
 # Author: TRONIC-B-21
 
 set -e
 clear
-echo -e "\e[92m🚀 Installing ZIVPN for AMD64 – Ultimate Performance Mode\e[0m"
+echo -e "\e[96m🚀 Installing ZIVPN for ARM64 – Turbo Boost Mode\e[0m"
 
 # 1) Update & upgrade
 apt-get update -y && apt-get upgrade -y
@@ -31,10 +31,10 @@ sysctl -w net.ipv4.tcp_tw_reuse=1
 # 4) Stop any existing ZIVPN service
 systemctl stop udp-zivpn.service 2>/dev/null || true
 
-# 5) Download and install the AMD64 binary
+# 5) Download and install the ARM64 binary
 echo "⬇️ Downloading ZIVPN binary..."
 wget -q --show-progress \
-  https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 \
+  https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-arm64 \
   -O /usr/local/bin/udp-zivpn
 chmod +x /usr/local/bin/udp-zivpn
 
@@ -62,7 +62,7 @@ openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
 # 8) Create systemd service
 cat <<EOF > /etc/systemd/system/udp-zivpn.service
 [Unit]
-Description=ZIVPN UDP Server (AMD64)
+Description=ZIVPN UDP Server (ARM64)
 After=network.target
 
 [Service]
@@ -95,4 +95,4 @@ iface=$(ip -4 route show default | awk '/default/ {print $5; exit}')
 iptables -t nat -C PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667 2>/dev/null || \
 iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 
-echo -e "\n✅ ZIVPN AMD64 installed and optimized for 1 GB VPS!\n"
+echo -e "\n✅ ZIVPN ARM64 installed and optimized for 1 GB VPS!\n"
