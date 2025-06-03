@@ -2,22 +2,34 @@
 # Zivpn UDP Module installer - ARM
 # Creator: SAUNDERS | Modified by TRONIC-B-21
 
-echo -e "Updating server"
-sudo apt-get update && apt-get upgrade -y
-systemctl stop udp-zivpn.service 1> /dev/null 2> /dev/null
-echo -e "Downloading UDP Service"
-wget https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-arm64 -O /usr/local/bin/udp-zivpn 1> /dev/null 2> /dev/null
-chmod +x /usr/local/bin/udp-zivpn
-mkdir /etc/udp-zivpn 1> /dev/null 2> /dev/null
-wget https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json -O /etc/udp-zivpn/config.json 1> /dev/null 2> /dev/null
+set -euo pipefail
 
-echo "Generating cert files:"
-openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" -keyout "/etc/udp-zivpn/udp-zivpn.key" -out "/etc/udp-zivpn/udp-zivpn.crt"
-sysctl -w net.core.rmem_max=16777216 1> /dev/null 2> /dev/null
-sysctl -w net.core.wmem_max=16777216 1> /dev/null 2> /dev/null
+echo "⏫ Updating system and installing required packages..."
+sudo apt-get update -y >/dev/null
+sudo apt-get install -y openssl ufw wget curl >/dev/null
+
+echo "⏹️  Stopping existing service..."
+systemctl stop udp-zivpn.service 2>/dev/null || true
+
+echo "📥 Downloading binaries..."
+wget https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-arm64 -O /usr/local/bin/udp-zivpn >/dev/null 2>&1 &
+mkdir -p /etc/udp-zivpn
+wget https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json -O /etc/udp-zivpn/config.json >/dev/null 2>&1 &
+wait
+chmod +x /usr/local/bin/udp-zivpn
+
+echo "🔐 Generating certificate..."
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+  -subj "/C=US/ST=California/L=Los Angeles/O=ZIVPN/OU=Network/CN=udp-zivpn" \
+  -keyout "/etc/udp-zivpn/udp-zivpn.key" -out "/etc/udp-zivpn/udp-zivpn.crt"
+
+echo "🔧 Optimizing kernel buffers..."
+sysctl -w net.core.rmem_max=16777216 net.core.wmem_max=16777216 >/dev/null
+
+echo "⚙️  Creating systemd service..."
 cat <<EOF > /etc/systemd/system/udp-zivpn.service
 [Unit]
-Description=zivpn VPN Server
+Description=ZIVPN VPN Server
 After=network.target
 
 [Service]
@@ -36,26 +48,32 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 
-echo -e "ZIVPN UDP Passwords"
-read -p "Enter passwords separated by commas, example: passwd1,passwd2 (Press enter for Default 'zi'): " input_config
-
+echo "🔑 Setting ZIVPN passwords..."
+read -p "Enter passwords (comma-separated), or press Enter for default [zi]: " input_config
 if [ -n "$input_config" ]; then
     IFS=',' read -r -a config <<< "$input_config"
-    if [ ${#config[@]} -eq 1 ]; then
-        config+=(${config[0]})
-    fi
+    if [ ${#config[@]} -eq 1 ]; then config+=(${config[0]}); fi
 else
     config=("zi")
 fi
-
 new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
-
 sed -i -E "s/\"config\": ?\[[[:space:]]*\"zi\"[[:space:]]*\]/${new_config_str}/g" /etc/udp-zivpn/config.json
 
+echo "🚀 Enabling and starting service..."
 systemctl enable udp-zivpn.service
 systemctl start udp-zivpn.service
-iptables -t nat -A PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 6000:19999 -j DNAT --to-destination :5667
-ufw allow 6000:19999/udp
-ufw allow 5667/udp
-rm zi2.* 1> /dev/null 2> /dev/null
-echo -e "ZIVPN Installed"
+
+echo "🌐 Setting up firewall rules..."
+iface=$(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1)
+iptables -t nat -A PREROUTING -i $iface -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+ufw allow 6000:19999/udp >/dev/null
+ufw allow 5667/udp >/dev/null
+
+rm zi2.* 2>/dev/null || true
+
+sleep 1
+if systemctl is-active --quiet udp-zivpn.service; then
+  echo -e "\n✅ ZIVPN Installed and Running"
+else
+  echo -e "\n❌ ZIVPN failed to start. Check logs using: journalctl -u udp-zivpn.service"
+fi
