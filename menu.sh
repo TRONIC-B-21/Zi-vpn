@@ -121,7 +121,7 @@ echo -e "${YELLOW}STOPPING.."
         
         if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN service..."
-            sudo systemctl stop zivpn.service
+            sudo systemctl stop udp-zivpn.service
         fi
         if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
             echo -e "${YELLOW}Starting ZiVPN Backfill service..."
