@@ -25,7 +25,7 @@ while true; do
 #installv1
 function installv1(){
 echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will install ZIVPN version 1, UDP port range will be 20000:50000 redirected to 5666"
+echo -e "${YELLOW}This option will install ZIVPN version 1, UDP port range will be 20000:50000 redirected to 5667"
 echo -e "${YELLOW}Continue?"
 while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
 read -p "[S/N]: " yesno
