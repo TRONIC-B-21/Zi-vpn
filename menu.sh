@@ -168,7 +168,7 @@ echo -e "${YELLOW} › ${WHITE}IP:${GREEN} $IP "
 echo -e "${YELLOW} › ${WHITE}Network:${GREEN} $Network "
 echo -e "${YELLOW} › ${WHITE}Running:${GREEN} $ports "
 echo -e "${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}[${GREEN}1${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V1 (5666) [Discontinued]
+echo -e "${YELLOW}[${GREEN}1${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V1 (5666) [Recommended]
 ${YELLOW}[${GREEN}2${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V2 AMD (5667) [Recommended]
 ${YELLOW}[${GREEN}3${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V2 ARM (5667)
 ${YELLOW}[${GREEN}4${YELLOW}] ${RED} › ${WHITE} UNINSTALL ZIVPN
@@ -194,11 +194,11 @@ case $option in
   4 | 04)
    uninstall;;
   5 | 05)
-   startzivpn;;
+   startudp-zivpn;;
   6 | 06)
-   stopzivpn;;
+   stopudp-zivpn;;
   7 | 07)
-   restartzivpn;;
+   restartudp-zivpn;;
   0)
   exit;;
   *)
