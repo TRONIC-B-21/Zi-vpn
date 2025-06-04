@@ -23,7 +23,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/etc/zivpn
+WorkingDirectory=/etc/udp-zivpn
 ExecStart=/usr/local/bin/udp-zivpn server -c /etc/udp-zivpn/config.json
 Restart=always
 RestartSec=3
