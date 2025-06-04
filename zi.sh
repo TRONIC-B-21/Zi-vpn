@@ -5,19 +5,27 @@
 echo -e "Updating server"
 sudo apt-get update && apt-get upgrade -y
 systemctl stop udp-zivpn.service 1> /dev/null 2> /dev/null
+
 echo -e "Downloading UDP Service"
 wget https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 -O /usr/local/bin/udp-zivpn 1> /dev/null 2> /dev/null
 chmod +x /usr/local/bin/udp-zivpn
-mkdir /etc/udp-zivpn 1> /dev/null 2> /dev/null
+
+mkdir -p /etc/udp-zivpn 1> /dev/null 2> /dev/null
 wget https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json -O /etc/udp-zivpn/config.json 1> /dev/null 2> /dev/null
 
 echo "Generating cert files:"
-openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" -keyout "/etc/udp-zivpn/udp-zivpn.key" -out "/etc/udp-zivpn/udp-zivpn.crt"
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+-subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" \
+-keyout "/etc/udp-zivpn/udp-zivpn.key" -out "/etc/udp-zivpn/udp-zivpn.crt"
+
+# Optimize system networking buffers
 sysctl -w net.core.rmem_max=16777216 1> /dev/null 2> /dev/null
 sysctl -w net.core.wmem_max=16777216 1> /dev/null 2> /dev/null
+
+# Create systemd service file
 cat <<EOF > /etc/systemd/system/udp-zivpn.service
 [Unit]
-Description=zivpn VPN Server
+Description=ZIVPN UDP VPN Server
 After=network.target
 
 [Service]
@@ -36,6 +44,7 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 
+# Password input and configuration patch
 echo -e "ZIVPN UDP Passwords"
 read -p "Enter passwords separated by commas, example: pass1,pass2 (Press enter for Default 'zi'): " input_config
 
@@ -49,13 +58,18 @@ else
 fi
 
 new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
-
 sed -i -E "s/\"config\": ?\[[[:space:]]*\"zi\"[[:space:]]*\]/${new_config_str}/g" /etc/udp-zivpn/config.json
 
+# Enable and start service
+systemctl daemon-reload
 systemctl enable udp-zivpn.service
 systemctl start udp-zivpn.service
-iptables -t nat -A PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+
+# Add firewall rules
+iptables -t nat -A PREROUTING -i $(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1) -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 ufw allow 6000:19999/udp
 ufw allow 5667/udp
+
+# Clean up installer files
 rm zi.* 1> /dev/null 2> /dev/null
-echo -e "ZIVPN UDP Installed"
+echo -e "✅ ZIVPN UDP Installed Successfully!"
