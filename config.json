@@ -1,10 +1,10 @@
 {
   "listen": ":5667",
-   "cert": "/etc/udp-zivpn/udp-zivpn.crt",
-   "key": "/etc/udp-zivpn/udp-zivpn.key",
-   "obfs":"udp-zivpn",
-   "auth": {
-    "mode": "passwords", 
+  "cert": "/etc/udp-zivpn/udp-zivpn.crt",
+  "key": "/etc/udp-zivpn/udp-zivpn.key",
+  "obfs": "udp-zivpn",
+  "auth": {
+    "mode": "passwords",
     "config": ["zi"]
   }
 }
