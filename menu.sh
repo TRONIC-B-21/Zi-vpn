@@ -1,208 +1,129 @@
 #!/bin/bash
-#Hyper - Tronic
-IP=`curl -4 icanhazip.com`;
-distribution=`( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1`;
-Network=`ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1`;
-ports=`netstat -tunlp | grep udp-zivpn | grep ::: | awk '{print substr($4,4); }' > /tmp/udp-zivpn.txt && echo | cat /tmp/udp-zivpn.txt | tr '\n' ' ' > /tmp/udp-zivpnports.txt && cat /tmp/udp-zivpnports.txt`;
-#colors
+# Hyper - Tronic
+
+IP=$(curl -s4 icanhazip.com)
+distribution=$(lsb_release -ds 2>/dev/null || cat /etc/*release | head -n1)
+Network=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
+ports=$(netstat -tunlp | grep udp-zivpn | awk '{print $4}' | cut -d: -f2 | tr '\n' ' ')
+
+# Colors
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
-PURPLE='\033[1;35m'
-CYAN='\033[1;36m'
-GRAY='\033[1;37m'
 WHITE='\033[1;37m'
+GRAY='\033[1;37m'
 RESET='\033[0m'
-#menu
-while true; do
-  if [ $(id -u) -eq 0 ]; then
-    clear
-  else
-    echo -e "Run the script as root user"
-    exit
+
+# Ensure root
+if [ "$(id -u)" -ne 0 ]; then
+  echo -e "${RED}Run this script as root!${RESET}"
+  exit 1
+fi
+
+# Install V1
+installv1() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}This will install ZIVPN V1 with UDP ports 20000:50000 redirected to 5667"
+  read -p "${YELLOW}Continue? [Y/N]: " yesno
+  [[ "$yesno" =~ ^[yYsS]$ ]] && bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi.sh)
+}
+
+# Install V2 AMD
+installv2() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}This will install ZIVPN V2 (AMD) with UDP ports 6000:19999 redirected to 5667"
+  read -p "${YELLOW}Continue? [Y/N]: " yesno
+  [[ "$yesno" =~ ^[yYsS]$ ]] && bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi2.sh)
+}
+
+# Install V2 ARM
+installv3() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}This will install ZIVPN V2 (ARM) with UDP ports 6000:19999 redirected to 5667"
+  read -p "${YELLOW}Continue? [Y/N]: " yesno
+  [[ "$yesno" =~ ^[yYsS]$ ]] && bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi3.sh)
+}
+
+# Uninstall
+uninstall() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}This will uninstall all ZIVPN services"
+  read -p "${YELLOW}Continue? [Y/N]: " yesno
+  [[ "$yesno" =~ ^[yYsS]$ ]] && bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/uninstall.sh)
+}
+
+# Start Services
+startudp-zivpn() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}Start ZIVPN server?"
+  read -p "${YELLOW}[Y/N]: " yesno
+  if [[ "$yesno" =~ ^[yYsS]$ ]]; then
+    [[ -f /etc/systemd/system/udp-zivpn.service ]] && systemctl start udp-zivpn.service
+    [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]] && systemctl start udp-zivpn_backfill.service
+    echo -e "${GREEN}ZIVPN services started.${RESET}"
   fi
-#installv1
-function installv1(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will install ZIVPN version 1, UDP port range will be 20000:50000 redirected to 5667"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi.sh)
-fi
 }
-#installv2
-function installv2(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will install ZIVPN version 2 AMD, UDP port range will be 6000:19999 redirected to 5667"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi2.sh)
-fi
+
+# Stop Services
+stopudp-zivpn() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}Stop ZIVPN server?"
+  read -p "${YELLOW}[Y/N]: " yesno
+  if [[ "$yesno" =~ ^[yYsS]$ ]]; then
+    [[ -f /etc/systemd/system/udp-zivpn.service ]] && systemctl stop udp-zivpn.service
+    [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]] && systemctl stop udp-zivpn_backfill.service
+    echo -e "${GREEN}ZIVPN services stopped.${RESET}"
+  fi
 }
-#installv3
-function installv3(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will install ZIVPN version 2 ARM, UDP port range will be 6000:19999 redirected to 5667"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}INSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/zi3.sh)
-fi
+
+# Restart Services
+restartudp-zivpn() {
+  local yesno
+  echo -e "${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}Restart ZIVPN server?"
+  read -p "${YELLOW}[Y/N]: " yesno
+  if [[ "$yesno" =~ ^[yYsS]$ ]]; then
+    [[ -f /etc/systemd/system/udp-zivpn.service ]] && systemctl restart udp-zivpn.service
+    [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]] && systemctl restart udp-zivpn_backfill.service
+    echo -e "${GREEN}ZIVPN services restarted.${RESET}"
+  fi
 }
-#uninstall
-function uninstall(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will uninstall the ZIVPN server in any of its versions"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}UNINSTALLING.."
-bash <(curl -fsSL https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/uninstall.sh)
-fi
-}
-#start
-function startudp-zivpn(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will start the ZiVPN server"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}STARTING.."
-    if [[ ${yesno} = @(s|S|y|Y) ]]; then
-        echo -e "${YELLOW}Checking for ZiVPN services..."
-        
-        if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
-            echo -e "${YELLOW}Starting ZiVPN service..."
-            sudo systemctl start udp-zivpn.service
-        fi
-        if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
-            echo -e "${YELLOW}Starting ZiVPN Backfill service..."
-            sudo systemctl start udp-zivpn_backfill.service
-        fi
-        
-        echo -e "${YELLOW}DONE!"
-    fi
-fi
-}
-#stop
-function stopudp-zivpn(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will stop the ZiVPN server"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}STOPPING.."
-    if [[ ${yesno} = @(s|S|y|Y) ]]; then
-        echo -e "${YELLOW}Checking for ZiVPN services..."
-        
-        if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
-            echo -e "${YELLOW}Starting ZiVPN service..."
-            sudo systemctl stop udp-zivpn.service
-        fi
-        if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
-            echo -e "${YELLOW}Starting ZiVPN Backfill service..."
-            sudo systemctl stop udp-zivpn_backfill.service
-        fi
-        
-        echo -e "${YELLOW}DONE!"
-    fi
-fi
-}
-#restart
-function restartudp-zivpn(){
-echo -e "${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}This option will restart the ZiVPN server"
-echo -e "${YELLOW}Continue?"
-while [[ ${yesno} != @(s|S|y|Y|n|N) ]]; do
-read -p "[S/N]: " yesno
-tput cuu1 && tput dl1
-done
-if [[ ${yesno} = @(s|S|y|Y) ]]; then
-echo -e "${YELLOW}RESTARTING.."
-    if [[ ${yesno} = @(s|S|y|Y) ]]; then
-        echo -e "${YELLOW}Checking for ZiVPN services..."
-        
-        if [[ -f /etc/systemd/system/udp-zivpn.service ]]; then
-            echo -e "${YELLOW}Starting ZiVPN service..."
-            sudo systemctl restart udp-zivpn.service
-        fi
-        if [[ -f /etc/systemd/system/udp-zivpn_backfill.service ]]; then
-            echo -e "${YELLOW}Starting ZiVPN Backfill service..."
-            sudo systemctl restart udp-zivpn_backfill.service
-        fi
-        
-        echo -e "${YELLOW}DONE!"
-    fi
-fi
-}
-  if [[ $1 == "" ]]; then
-    clear && printf '\e[3J'
-echo -e "${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}   【          ${RED}ZIVPN            ${YELLOW}】 "
-echo -e "${YELLOW} › ${WHITE}Linux Dist:${GREEN} $distribution "
-echo -e "${YELLOW} › ${WHITE}IP:${GREEN} $IP "
-echo -e "${YELLOW} › ${WHITE}Network:${GREEN} $Network "
-echo -e "${YELLOW} › ${WHITE}Running:${GREEN} $ports "
-echo -e "${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW}[${GREEN}1${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V1 (5666) [Recommended]
-${YELLOW}[${GREEN}2${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V2 AMD (5667) [Recommended]
-${YELLOW}[${GREEN}3${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V2 ARM (5667)
-${YELLOW}[${GREEN}4${YELLOW}] ${RED} › ${WHITE} UNINSTALL ZIVPN
-${YELLOW}[${GREEN} ${YELLOW}] ${RED} › ${WHITE} ────────
-${YELLOW}[${GREEN}5${YELLOW}] ${RED} › ${WHITE} START ZIVPN
-${YELLOW}[${GREEN}6${YELLOW}] ${RED} › ${WHITE} STOP ZIVPN
-${YELLOW}[${GREEN}7${YELLOW}] ${RED} › ${WHITE} RESTART ZIVPN
-${YELLOW}[${GREEN}0${YELLOW}] ${RED} › ${WHITE} EXIT
-${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
-echo -e "${YELLOW} Δ CHOOSE AN OPTION:      ${YELLOW}"
-read -p " : " option
-tput cuu1 >&2 && tput dl1 >&2
-else
-option=$1
-fi
-case $option in
-  1 | 01 )
-   installv1;;
-  2 | 02 )
-   installv2;;
-  3 | 03 )
-   installv3;;
-  4 | 04)
-   uninstall;;
-  5 | 05)
-   startudp-zivpn;;
-  6 | 06)
-   stopudp-zivpn;;
-  7 | 07)
-   restartudp-zivpn;;
-  0)
-  exit;;
-  *)
-  continue;;
-  esac
-  break
-  done
+
+# Menu
+while true; do
+  clear && printf '\e[3J'
+  echo -e "${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}   【          ${RED}ZIVPN MANAGER           ${YELLOW}】 "
+  echo -e "${YELLOW} › ${WHITE}Linux Dist:${GREEN} $distribution"
+  echo -e "${YELLOW} › ${WHITE}IP:         ${GREEN} $IP"
+  echo -e "${YELLOW} › ${WHITE}Network:    ${GREEN} $Network"
+  echo -e "${YELLOW} › ${WHITE}Running:    ${GREEN} $ports"
+  echo -e "${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
+  echo -e "${YELLOW}[${GREEN}1${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V1 (5666) [Recommended]"
+  echo -e "${YELLOW}[${GREEN}2${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V2 AMD (5667) [Recommended]"
+  echo -e "${YELLOW}[${GREEN}3${YELLOW}] ${RED} › ${WHITE} INSTALL ZIVPN V2 ARM (5667)"
+  echo -e "${YELLOW}[${GREEN}4${YELLOW}] ${RED} › ${WHITE} UNINSTALL ZIVPN"
+  echo -e "${YELLOW}[${GREEN}5${YELLOW}] ${RED} › ${WHITE} START ZIVPN"
+  echo -e "${YELLOW}[${GREEN}6${YELLOW}] ${RED} › ${WHITE} STOP ZIVPN"
+  echo -e "${YELLOW}[${GREEN}7${YELLOW}] ${RED} › ${WHITE} RESTART ZIVPN"
+  echo -e "${YELLOW}[${GREEN}0${YELLOW}] ${RED} › ${WHITE} EXIT"
+  echo -e "${GRAY}[${RED}-${GRAY}]${RED} ────────────── /// ─────────────── "
+  read -p "${YELLOW} Δ CHOOSE AN OPTION: ${RESET}" option
+  tput cuu1 && tput dl1
+
+  case $option in
+    1 | 01 ) installv1 ;;
+    2 | 02 ) installv2 ;;
+    3 | 03 ) installv3 ;;
+    4 | 04 ) uninstall ;;
+    5 | 05 ) startudp-zivpn ;;
+    6 | 06 ) stopudp-zivpn ;;
+    7 | 07 ) restartudp-zivpn ;;
+    0 ) clear; exit ;;
+    * ) ec*
