@@ -4,7 +4,14 @@
 IP=$(curl -s4 icanhazip.com)
 distribution=$(lsb_release -ds 2>/dev/null || cat /etc/*release | head -n1)
 Network=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
-ports=$(netstat -tunlp | grep udp-zivpn | awk '{print $4}' | cut -d: -f2 | tr '\n' ' ')
+
+# Replace netstat with ss to get UDP ports
+if command -v ss >/dev/null 2>&1; then
+  ports=$(ss -tunlp | grep udp-zivpn | awk '{print $5}' | cut -d: -f2 | tr '\n' ' ')
+else
+  echo "Error: ss command not found. Please install iproute2 package."
+  ports="N/A"
+fi
 
 # Colors
 RED='\033[1;31m'
@@ -118,12 +125,14 @@ while true; do
   tput cuu1 && tput dl1
 
   case $option in
-    1 | 01 ) installv1 ;;
-    2 | 02 ) installv2 ;;
-    3 | 03 ) installv3 ;;
-    4 | 04 ) uninstall ;;
-    5 | 05 ) startudp-zivpn ;;
-    6 | 06 ) stopudp-zivpn ;;
-    7 | 07 ) restartudp-zivpn ;;
-    0 ) clear; exit ;;
-    * ) ec*
+    1|01) installv1 ;;
+    2|02) installv2 ;;
+    3|03) installv3 ;;
+    4|04) uninstall ;;
+    5|05) startudp-zivpn ;;
+    6|06) stopudp-zivpn ;;
+    7|07) restartudp-zivpn ;;
+    0) clear; exit ;;
+    *) echo -e "${RED}Invalid option.${RESET}" ;;
+  esac
+done
