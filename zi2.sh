@@ -1,72 +1,34 @@
 #!/bin/bash
-# 🛠️ ZIVPN + WireGuard Hybrid Installer - ARM (32-bit)
-# Maintainer: TRONIC-B-21
+# Zivpn UDP Module installer - ARM
+# Creator: SAUNDERS | Modified by TRONIC-B-21
 
-set -e
-clear
-echo -e "\e[96m🚀 Installing ZIVPN + WireGuard on ARM (32-bit) with Hyped BBR!\e[0m"
+echo -e "Updating server"
+sudo apt-get update && apt-get upgrade -y
+systemctl stop udp-zivpn.service 1> /dev/null 2> /dev/null
+echo -e "Downloading UDP Service"
+wget https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-arm64 -O /usr/local/bin/udp-zivpn 1> /dev/null 2> /dev/null
+chmod +x /usr/local/bin/udp-zivpn
+mkdir /etc/udp-zivpn 1> /dev/null 2> /dev/null
+wget https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json -O /etc/udp-zivpn/config.json 1> /dev/null 2> /dev/null
 
-# 1) Update system
-apt-get update && apt-get upgrade -y
-
-# 2) Enable IP forwarding
-echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-sysctl -p
-
-# 3) Kernel & Buffer tuning
-echo "⚙️ Tuning kernel for UDP & WireGuard performance..."
-sysctl -w net.core.rmem_max=2500000
-sysctl -w net.core.wmem_max=2500000
-sysctl -w net.ipv4.tcp_congestion_control="bbr"
-sysctl -w net.core.netdev_max_backlog=25000
-sysctl -w net.ipv4.udp_rmem_min=65536
-sysctl -w net.ipv4.udp_wmem_min=65536
-
-# 4) Stop existing services
-systemctl stop zivpn.service 2>/dev/null || true
-systemctl stop wg-quick@zivwg.service 2>/dev/null || true
-
-# 5) Install dependencies
-apt install -y wireguard-tools iptables curl wget openssl
-
-# 6) ZIVPN binary download
-echo "⬇️ Downloading ZIVPN binary..."
-wget -q --show-progress \
-  https://github.com/TRONIC-B-21/zivpn/releases/latest/download/udp-zivpn-linux-arm \
-  -O /usr/local/bin/zivpn
-chmod +x /usr/local/bin/zivpn
-
-# 7) ZIVPN Config
-mkdir -p /etc/zivpn
-cat <<EOF > /etc/zivpn/config.json
-{
-  "listen": ":5667",
-  "mtu": 1350,
-  "cipher": "chacha20-poly1305",
-  "handshake_timeout": 5,
-  "idle_timeout": 300,
-  "log_level": "warn",
-  "config": ["zi"]
-}
-EOF
-
-# 8) Self-signed certs
-echo "🔐 Generating TLS cert for ZIVPN..."
-openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
-  -subj "/C=XX/ST=NA/L=Anywhere/O=ZIVPN/CN=zivpn" \
-  -keyout /etc/zivpn/zivpn.key -out /etc/zivpn/zivpn.crt
-
-# 9) Systemd: ZIVPN
-cat <<EOF > /etc/systemd/system/zivpn.service
+echo "Generating cert files:"
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" -keyout "/etc/udp-zivpn/udp-zivpn.key" -out "/etc/udp-zivpn/udp-zivpn.crt"
+sysctl -w net.core.rmem_max=16777216 1> /dev/null 2> /dev/null
+sysctl -w net.core.wmem_max=16777216 1> /dev/null 2> /dev/null
+cat <<EOF > /etc/systemd/system/udp-zivpn.service
 [Unit]
-Description=ZIVPN UDP Server (ARM)
+Description=zivpn VPN Server
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/zivpn server -c /etc/zivpn/config.json
-Restart=always
-RestartSec=2
+Type=simple
 User=root
+WorkingDirectory=/etc/zivpn
+ExecStart=/usr/local/bin/udp-zivpn server -c /etc/udp-zivpn/config.json
+Restart=always
+RestartSec=3
+Environment=ZIVPN_LOG_LEVEL=info
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 NoNewPrivileges=true
 
@@ -74,46 +36,26 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 
-# 10) WireGuard: Setup (auto keys & local-only)
-WG_DIR="/etc/wireguard"
-mkdir -p \$WG_DIR
-umask 077
-wg genkey | tee \$WG_DIR/privatekey | wg pubkey > \$WG_DIR/publickey
+echo -e "ZIVPN UDP Passwords"
+read -p "Enter passwords separated by commas, example: passwd1,passwd2 (Press enter for Default 'zi'): " input_config
 
-PRIVATE_KEY=\$(cat \$WG_DIR/privatekey)
-
-cat <<EOF > \$WG_DIR/zivwg.conf
-[Interface]
-Address = 10.7.0.1/24
-ListenPort = 51820
-PrivateKey = \$PRIVATE_KEY
-PostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
-
-EOF
-
-# 11) Systemd: WireGuard
-systemctl enable wg-quick@zivwg
-systemctl start wg-quick@zivwg
-
-# 12) Prompt password(s)
-read -p "🔐 Enter UDP passwords (comma-separated, default 'zi'): " input_config
-if [[ -n "$input_config" ]]; then
-  IFS=',' read -ra config <<< "$input_config"
-  passwords_json=$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')
-  sed -i -E "s/\"config\": ?\[[^]]*\]/\"config\": [${passwords_json}]/" /etc/zivpn/config.json
+if [ -n "$input_config" ]; then
+    IFS=',' read -r -a config <<< "$input_config"
+    if [ ${#config[@]} -eq 1 ]; then
+        config+=(${config[0]})
+    fi
+else
+    config=("zi")
 fi
 
-# 13) Start ZIVPN service
-systemctl daemon-reload
-systemctl enable zivpn
-systemctl restart zivpn
+new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
 
-# 14) Firewall rules
-iface=$(ip -4 route show default | awk '/default/ {print $5; exit}')
-iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
-ufw allow 5667/udp
-ufw allow 51820/udp
+sed -i -E "s/\"config\": ?\[[[:space:]]*\"zi\"[[:space:]]*\]/${new_config_str}/g" /etc/udp-zivpn/config.json
+
+systemctl enable udp-zivpn.service
+systemctl start udp-zivpn.service
+iptables -t nat -A PREROUTING -i $(ip -4 route ls|grep default|grep -Po '(?<=dev )(\S+)'|head -1) -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 ufw allow 6000:19999/udp
-
-echo -e "\n✅ \e[92mZIVPN + WireGuard (ARM) Installed & Optimized with Hyped BBR!\e[0m"
+ufw allow 5667/udp
+rm zi2.* 1> /dev/null 2> /dev/null
+echo -e "ZIVPN Installed"
