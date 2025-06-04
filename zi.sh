@@ -4,7 +4,7 @@
 
 echo -e "Updating server"
 sudo apt-get update && apt-get upgrade -y
-systemctl stop zivpn.service 1> /dev/null 2> /dev/null
+systemctl stop udp-zivpn.service 1> /dev/null 2> /dev/null
 echo -e "Downloading UDP Service"
 wget https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 -O /usr/local/bin/udp-zivpn 1> /dev/null 2> /dev/null
 chmod +x /usr/local/bin/udp-zivpn
@@ -23,7 +23,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/etc/zivpn
+WorkingDirectory=/etc/udp-zivpn
 ExecStart=/usr/local/bin/udp-zivpn server -c /etc/udp-zivpn/config.json
 Restart=always
 RestartSec=3
