@@ -1,33 +1,52 @@
 #!/bin/bash
-# Zivpn UDP Module installer - ARM64
-# Creator: Saunders Tobin
+# ZIVPN UDP Module installer & optimizer - ARM64
+# Creator: Saunders Tobin | Enhanced by Terry's Assistant
 
-echo -e "Updating server..."
+set -euo pipefail
+IFS=$'\n\t'
+
+# Identify primary network interface
+IFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )\S+' | head -1)
+
+echo -e "\n🔄 Updating server and dependencies"
 apt-get update && apt-get upgrade -y
 
-echo -e "Stopping existing service (if any)..."
-systemctl stop udp-zivpn.service 1> /dev/null 2> /dev/null
+echo -e "\n⏹️ Stopping existing service (if any)"
+systemctl stop udp-zivpn.service 2> /dev/null || true
 
-echo -e "Downloading ZIVPN UDP binary..."
+echo -e "\n⬇️ Downloading ZIVPN UDP binary (ARM64)"
 wget -q https://github.com/TRONIC-B-21/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-arm64 -O /usr/local/bin/udp-zivpn
 chmod +x /usr/local/bin/udp-zivpn
 
-echo -e "Creating config directory..."
+echo -e "\n📂 Creating config directory and fetching default config"
 mkdir -p /etc/udp-zivpn
+download_url="https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json"
+wget -q "$download_url" -O /etc/udp-zivpn/config.json
 
-echo -e "Downloading default config file..."
-wget -q https://raw.githubusercontent.com/TRONIC-B-21/udp-zivpn/main/config.json -O /etc/udp-zivpn/config.json
-
-echo "Generating TLS certificate and key..."
+echo -e "\n🔐 Generating TLS certificate and key"
 openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
-  -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" \
-  -keyout "/etc/udp-zivpn/udp-zivpn.key" -out "/etc/udp-zivpn/udp-zivpn.crt"
+    -subj "/C=US/ST=California/L=Los Angeles/O=Example Corp/OU=IT Department/CN=udp-zivpn" \
+    -keyout "/etc/udp-zivpn/udp-zivpn.key" \
+    -out "/etc/udp-zivpn/udp-zivpn.crt"
 
-# Apply performance tuning
-sysctl -w net.core.rmem_max=16777216 > /dev/null
-sysctl -w net.core.wmem_max=16777216 > /dev/null
+echo -e "\n⚙️ Applying sysctl network optimizations for 1Gbps & low latency"
+cat <<EOF > /etc/sysctl.d/99-udp-zivpn.conf
+net.core.rmem_max=33554432
+net.core.wmem_max=33554432
+net.ipv4.tcp_rmem=4096 87380 33554432
+net.ipv4.tcp_wmem=4096 65536 33554432
+net.ipv4.tcp_congestion_control=bbr2
+net.core.default_qdisc=fq
+net.ipv4.tcp_fastopen=3
+net.netfilter.nf_conntrack_max=262144
+EOF
+sysctl --system 1> /dev/null
 
-# Create systemd service
+echo -e "\n🚦 Installing iproute2 & configuring cake qdisc on $IFACE for 1Gbps bandwidth"
+apt-get install -y iproute2
+tc qdisc replace dev "$IFACE" root cake bandwidth 1gbps nat dual-srchost
+
+echo -e "\n⚙️ Creating systemd service file"
 cat <<EOF > /etc/systemd/system/udp-zivpn.service
 [Unit]
 Description=ZIVPN UDP Server
@@ -36,7 +55,8 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/local/bin/udp-zivpn -c /etc/udp-zivpn/config.json
+WorkingDirectory=/etc/udp-zivpn
+ExecStart=/usr/local/bin/udp-zivpn server -c /etc/udp-zivpn/config.json
 Restart=always
 RestartSec=3
 Environment=ZIVPN_LOG_LEVEL=info
@@ -48,35 +68,27 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 
-echo -e "\nZIVPN UDP Passwords Setup"
-read -p "Enter passwords separated by commas (or press enter for default 'zi'): " input_config
-
-if [ -n "$input_config" ]; then
+# Password setup prompt
+echo -e "\n🔑 ZIVPN UDP Passwords Setup"
+read -p "Enter passwords comma-separated (default 'zi'): " input_config || true
+if [[ -n "${input_config// /}" ]]; then
     IFS=',' read -r -a config <<< "$input_config"
+    [[ ${#config[@]} -eq 1 ]] && config+=(${config[0]})
 else
     config=("zi")
 fi
-
-# Generate proper JSON password array
-new_config_str="\"config\": [$(printf "\"%s\"," "${config[@]}" | sed 's/,$//')]"
-
-# Replace the config line in JSON
+new_config_str="\"config\": [$(printf '\"%s\",' "${config[@]}" | sed 's/,$//')]"
 sed -i -E "s/\"config\": ?\[[^]]*\]/${new_config_str}/g" /etc/udp-zivpn/config.json
 
-# Enable and start the service
-systemctl daemon-reexec
+echo -e "\n📡 Enabling and starting udp-zivpn.service"
 systemctl daemon-reload
-systemctl enable udp-zivpn.service
-systemctl start udp-zivpn.service
+device="udp-zivpn.service"
+systemctl enable "$device"
+systemctl start "$device"
 
-# Setup iptables and UFW rules
-iface=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
-iptables -t nat -A PREROUTING -i "$iface" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
-
+echo -e "\n🛡️ Configuring firewall rules"
+iptables -t nat -A PREROUTING -i "$IFACE" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
 ufw allow 6000:19999/udp
 ufw allow 5667/udp
 
-# Cleanup
-rm -f zi2.* > /dev/null 2>&1
-
-echo -e "\n✅ ZIVPN Installed Successfully on ARM64"
+echo -e "\n✅ ZIVPN Installed & Optimized for 1Gbps with BBR2 and Cake Qdisc!"
